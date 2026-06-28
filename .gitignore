@@ -95,6 +95,9 @@ eklenecekler.txt
 **/data/
 **/volumes/
 
+# Yedek-al.bat / yedek-al.sh ciktilari (repoya girmemeli)
+yedekler/
+
 # Lock files (birini seçin ve diğerini ekleyin)
 # package-lock.json
 # yarn.lock

@@ -104,8 +104,20 @@ saklama alanlarında** (volume) tutulur:
 yere** (harici disk, USB bellek veya bulut) kopyalayın. Yedek, ancak bu bilgisayarın
 dışında bir yerde de duruyorsa sizi korur.
 
-### Yedek alma
-Docker Desktop **açıkken**, bu klasörde **PowerShell** açıp şu iki komutu çalıştırın:
+### En kolay yöntem (Windows): `yedek-al.bat`
+Docker Desktop **açıkken**, klasördeki **`yedek-al.bat`** dosyasına **çift tıklayın**.
+Yedekler, tarih-saat damgalı olarak klasör içindeki **`yedekler`** klasörüne kaydedilir:
+
+- `yedekler\uploads-yedek-2026-06-28_14-30.tar.gz` → yüklenen resim/belgeler
+- `yedekler\db-yedek-2026-06-28_14-30.sql` → veritabanı (tüm kayıtlar)
+
+**Mac / Linux:** Terminalde `bash yedek-al.sh` çalıştırın (aynı işi yapar).
+
+> ⚠️ Yedek aldıktan sonra **`yedekler` klasörünü harici disk, USB bellek veya
+> buluta kopyalayın.** Yedek yalnızca aynı bilgisayarda durursa sizi korumaz.
+
+### Elle yedek alma (alternatif)
+İsterseniz bu klasörde **PowerShell** açıp komutları kendiniz de çalıştırabilirsiniz:
 
 ```powershell
 # 1) Yüklenen resim ve dosyalar
@@ -114,13 +126,6 @@ docker run --rm -v yonetim-panel-local_backend-uploads:/data -v "${PWD}:/backup"
 # 2) Veritabanı (tüm kayıtlar)
 docker exec panel-local-postgres pg_dump -U postgres yonetim_local > db-yedek.sql
 ```
-
-Komutlar bittiğinde klasörde **`uploads-yedek.tar.gz`** ve **`db-yedek.sql`**
-dosyaları oluşur. Bu iki dosyayı güvenli bir yere kopyalayın. Tarihli adlandırmak
-(örn. `db-yedek-2026-06-28.sql`) iyi bir alışkanlıktır.
-
-> İpucu: Bu işi kolaylaştırmak için klasöre **çift tıkla yedek alan** bir
-> `yedek-al.bat` dosyası da eklenebilir. İhtiyacınız olursa isteyin.
 
 ### Yedekten geri yükleme (gerekirse)
 Yeni/temiz bir kuruluma geri yüklemek için (Docker Desktop açıkken, klasörde):
