@@ -6,6 +6,9 @@ adresinden girersiniz.
 
 > Bu yerel kurulum tek başına çalışır; herhangi bir sunucuya (VPS) ihtiyaç yoktur.
 
+> 📘 **Ayrıntılı kullanım, verilerinizin nerede saklandığı ve YEDEKLEME için:**
+> [**KULLANIM-KILAVUZU.md**](KULLANIM-KILAVUZU.md) dosyasını okuyun.
+
 ---
 
 ## 1. Tek Gereksinim: Docker Desktop
