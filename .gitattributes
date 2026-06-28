@@ -1,0 +1,15 @@
+# Ensure Linux shell scripts don't get CRLF on Windows checkouts.
+*.sh text eol=lf
+
+# Dockerfiles should be LF as well (avoid subtle build issues).
+Dockerfile text eol=lf
+**/Dockerfile text eol=lf
+
+# Keep configs deterministic across platforms.
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Windows batch files MUST be CRLF, even in GitHub ZIP downloads,
+# yoksa cmd.exe dosyayi calistiramaz.
+*.bat text eol=crlf
+

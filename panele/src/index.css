@@ -1,0 +1,50 @@
+/* Global Styles */
+html {
+  overflow-y: auto;
+  overflow-x: hidden;
+  direction: ltr;
+  width: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  min-height: 100vh;
+  direction: ltr;
+  width: 100%;
+}
+
+#root {
+  min-height: 100vh;
+  overflow-x: hidden;
+  direction: ltr;
+  width: 100%;
+}
+
+/* Tüm sayfaların genişliği %100 */
+main,
+[role="main"] {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Scrollbar stilleri */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

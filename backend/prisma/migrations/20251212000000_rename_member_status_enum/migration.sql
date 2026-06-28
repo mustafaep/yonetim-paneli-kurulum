@@ -1,0 +1,5 @@
+-- Önce enum değerlerini güncelle
+ALTER TYPE "MemberStatus" RENAME VALUE 'PASIF' TO 'INACTIVE';
+ALTER TYPE "MemberStatus" RENAME VALUE 'ISTIFA' TO 'RESIGNED';
+ALTER TYPE "MemberStatus" RENAME VALUE 'IHRAC' TO 'EXPELLED';
+

@@ -1,0 +1,173 @@
+# ============================================================
+#  YÖNETİM PANELİ — YEREL (LOCALHOST) KURULUM
+# ------------------------------------------------------------
+#  Bu dosya, projeyi normal bir bilgisayarda (geliştirici olmayan biri için)
+#  Docker ile tek başına çalıştırmak içindir. VPS kurulumu (docker-compose.yml,
+#  reverse-proxy, TLS, domain, "edge" dış ağı) ile HİÇBİR bağlantısı yoktur ve
+#  onu ETKİLEMEZ.
+#
+#  Erişim:   http://localhost:3030
+#
+#  Başlatmak için (en kolayı):
+#     Windows : kurulum.bat dosyasına çift tıklayın
+#     Mac/Linux: ./kurulum.sh
+#
+#  Veya elle:
+#     docker compose -f docker-compose.local.yml --env-file .env.local up -d --build
+#
+#  Durdurmak için:
+#     docker compose -f docker-compose.local.yml down
+#  (Veriler korunur. Her şeyi silmek için sonuna --volumes ekleyin.)
+# ============================================================
+
+name: yonetim-panel-local
+
+services:
+  # ---- Veritabanı (PostgreSQL) ----
+  postgres:
+    image: postgres:16-alpine
+    container_name: panel-local-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-yonetim_local}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-yerel_db_sifresi}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - panel
+
+  # ---- Önbellek / Kuyruk (Redis) ----
+  redis:
+    image: redis:7-alpine
+    container_name: panel-local-redis
+    command: sh -c 'redis-server --appendonly yes ${REDIS_PASSWORD:+--requirepass "$REDIS_PASSWORD"}'
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - panel
+
+  # ---- Backend (NestJS API) ----
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: panel-local-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-yerel_db_sifresi}@postgres:5432/${POSTGRES_DB:-yonetim_local}?schema=public&connection_limit=10&pool_timeout=30&connect_timeout=30
+      # Redis
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      # Kimlik doğrulama
+      JWT_SECRET: ${JWT_SECRET:-yerel-kurulum-icin-en-az-32-karakter-gizli-anahtar-0001}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-24h}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      # Tarayıcıdan erişilen adres (CORS). Aynı origin'den /api proxy'lendiği için
+      # kritik değildir ama doğru ayarlı olması iyidir.
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3030}
+      CORS_CREDENTIALS: "true"
+      # İlk admin kullanıcısı (otomatik seed bununla oluşturulur)
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@panel.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin1234!}
+      # Yerel ilk kurulumda admin + temel verileri otomatik oluştur.
+      # SADECE veritabanı boşsa çalışır; mevcut verinizi ASLA silmez.
+      LOCAL_AUTO_SEED: ${LOCAL_AUTO_SEED:-true}
+      # WhatsApp (WAHA) — uygulama içinden QR okutarak bağlanılır
+      WAHA_API_URL: http://waha:3001
+      WAHA_API_KEY: ${WAHA_API_KEY:-yerel-waha-anahtari}
+      WAHA_SESSION_NAME: ${WAHA_SESSION_NAME:-default}
+      WAHA_WEBHOOK_URL: http://backend:3000
+      WHATSAPP_ENABLED: ${WHATSAPP_ENABLED:-true}
+      NOTIFICATION_WHATSAPP_ENABLED: ${NOTIFICATION_WHATSAPP_ENABLED:-true}
+    volumes:
+      - backend-uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+    restart: unless-stopped
+    networks:
+      panel:
+        # Frontend nginx, backend'i "yonetim-backend" adıyla çağırıyor.
+        # Bu takma ad sayesinde nginx.conf'u değiştirmeden çalışır.
+        aliases:
+          - yonetim-backend
+
+  # ---- Frontend (React + nginx) ----
+  frontend:
+    build:
+      context: ./panele
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api
+    container_name: panel-local-web
+    depends_on:
+      - backend
+    ports:
+      # Soldaki 3030 -> bilgisayarınızın portu. İsterseniz .env.local'da PORT ile değiştirin.
+      - "${PORT:-3030}:80"
+    restart: unless-stopped
+    networks:
+      - panel
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # ---- WhatsApp HTTP API (WAHA) ----
+  waha:
+    image: devlikeapro/waha:latest
+    container_name: panel-local-waha
+    environment:
+      WHATSAPP_DEFAULT_ENGINE: WEBJS
+      WAHA_DASHBOARD_ENABLED: "true"
+      WHATSAPP_API_PORT: "3001"
+      WAHA_API_KEY: ${WAHA_API_KEY:-yerel-waha-anahtari}
+      WAHA_DASHBOARD_USERNAME: ${WAHA_DASHBOARD_USERNAME:-admin}
+      WAHA_DASHBOARD_PASSWORD: ${WAHA_DASHBOARD_PASSWORD:-admin}
+      WHATSAPP_HOOK_URL: http://backend:3000/whatsapp/webhook
+      WHATSAPP_HOOK_EVENTS: "message,message.ack,session.status"
+      WHATSAPP_RESTART_ALL_SESSIONS: "true"
+      WHATSAPP_START_SESSION: ${WAHA_SESSION_NAME:-default}
+    volumes:
+      - waha-data:/app/.sessions
+    restart: unless-stopped
+    networks:
+      - panel
+
+volumes:
+  postgres-data:
+  redis-data:
+  backend-uploads:
+  waha-data:
+
+networks:
+  panel:
+    driver: bridge
